@@ -1,90 +1,71 @@
 # CareerPilot AI
 
-AI-powered career assistant that analyzes your resume against job descriptions and provides actionable insights.
+AI-powered resume-to-job matching and career guidance assistant.
+
+## Problem
+
+Candidates often struggle to understand how well their resume matches a specific job description and which skills they need to improve. Traditional self-assessment is subjective and time-consuming, leaving job seekers unsure of where to focus their preparation.
+
+## Solution
+
+CareerPilot AI accepts a resume PDF and a target job description. It extracts relevant information, sends it to an AI model, and returns a structured analysis including a match score, skill gap breakdown, strength identification, personalized recommendations, and tailored interview questions — all in seconds.
 
 ## Features
 
-- **PDF Resume Upload** — drag-and-drop or browse to upload your resume
-- **Job Description Analysis** — paste any job posting for comparison
-- **Match Score** — visual percentage showing how well your resume fits
-- **Skill Gap Analysis** — identifies missing skills ranked by importance
-- **Strengths Highlight** — what your resume does well for the role
-- **Improvement Recommendations** — prioritized action items
-- **Interview Questions** — AI-generated questions with answering tips
+- Resume PDF analysis
+- Job description analysis
+- Resume/job skill matching
+- Match score
+- Skill gap analysis
+- Strength identification
+- Personalized recommendations
+- AI-generated interview questions
+- Graceful fallback when the AI provider is temporarily unavailable
+
+## AI Usage
+
+- Resume text is extracted server-side from the uploaded PDF.
+- The application sends relevant resume and job information to OpenRouter.
+- Model: `google/gemma-4-26b-a4b-it:free`
+- The AI produces structured JSON analysis that is validated and returned to the frontend.
+- The API key is stored server-side in environment variables and is never exposed to the client.
+
+If the external AI provider is temporarily unavailable, the application returns a pre-built demo analysis so the demo can still run. A banner indicates when the demo fallback is in use.
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router)
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS v4
-- **Font:** Geist Sans / Geist Mono
+- Next.js
+- TypeScript
+- Tailwind CSS
+- OpenRouter
+- Google Gemma
+- PDF parsing
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm
-
-### Install & Run
+## How to Run
 
 ```bash
 npm install
 npm run dev
 ```
 
+Create an `.env.local` file in the project root with:
+
+```
+OPENROUTER_API_KEY=your_key_here
+```
+
+Replace `your_key_here` with a valid OpenRouter API key. Never commit this file to version control.
+
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Production Build
+## Impact
 
-```bash
-npm run build
-npm start
-```
+CareerPilot AI helps students and job seekers understand their readiness for a target role. Instead of guessing which skills matter most, candidates receive a concrete, personalized breakdown that lets them focus their preparation on the areas that will have the greatest impact.
 
-## Project Structure
+## Future Scope
 
-```
-src/
-├── app/
-│   ├── api/analyze/route.ts   # API endpoint (placeholder for LLM)
-│   ├── globals.css             # Theme & animations
-│   ├── layout.tsx              # Root layout
-│   └── page.tsx                # Main dashboard page
-├── components/
-│   ├── Header.tsx              # App header
-│   ├── ResumeUpload.tsx        # PDF upload with drag-and-drop
-│   ├── JobDescription.tsx      # Job description textarea
-│   ├── AnalyzeButton.tsx       # Analyze action button
-│   ├── AnalysisProgress.tsx    # Loading state with progress
-│   ├── ResultsDisplay.tsx      # Results orchestrator
-│   ├── MatchScoreCard.tsx      # Circular score visualization
-│   ├── SkillsList.tsx          # Skill tags with categories
-│   ├── GapAnalysis.tsx         # Missing skills breakdown
-│   ├── StrengthsList.tsx       # Strengths cards
-│   ├── RecommendationsList.tsx # Improvement suggestions
-│   └── InterviewQuestions.tsx  # Expandable Q&A list
-├── lib/
-│   └── mock-data.ts            # Demo data for UI testing
-└── types/
-    └── analysis.ts             # TypeScript interfaces
-```
-
-## What Remains to Implement
-
-The UI is complete and uses mock data. To make this fully functional:
-
-1. **PDF Text Extraction** — add a library like `pdf-parse` or `pdfjs-dist` to extract text from uploaded PDFs.
-
-2. **LLM Integration** — connect an LLM API (OpenAI, Anthropic, etc.) in `src/app/api/analyze/route.ts`:
-   - Send the extracted resume text + job description
-   - Prompt the LLM to return a structured JSON matching `AnalysisResult`
-   - Parse the response and return it
-
-3. **Streaming (optional)** — use streaming responses for a better UX during analysis.
-
-See `src/app/api/analyze/route.ts` for the placeholder endpoint that needs implementation.
-
-## License
-
-MIT
+- Resume improvement suggestions
+- Career roadmap
+- Multiple job comparison
+- Interview preparation
+- Downloadable reports
