@@ -152,34 +152,50 @@ export async function POST(request: Request) {
       const uint8 = new Uint8Array(arrayBuffer);
       console.log(`[PDF] Parsing resume (${resume.name}, ${uint8.length} bytes)`);
 
-      const pdfParser = new PDFParser();
-      const pdfData = await new Promise<{
-        Pages: { Texts: { R: { T: string }[] }[] }[];
-      }>((resolve, reject) => {
-        pdfParser.on("pdfParser_dataError", (errMsg: { parserError: Error } | Error) =>
-          reject(errMsg instanceof Error ? errMsg : errMsg.parserError)
-        );
-        pdfParser.on("pdfParser_dataReady", (data) =>
-          resolve(data as unknown as { Pages: { Texts: { R: { T: string }[] }[] }[] })
-        );
-        pdfParser.parseBuffer(Buffer.from(uint8));
+      const pdfParser = new PDFParser(null, false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfData = await new Promise<any>((resolve, reject) => {
+        let settled = false;
+        pdfParser.on("pdfParser_dataError", (errMsg: { parserError: Error } | Error) => {
+          if (settled) return;
+          settled = true;
+          reject(errMsg instanceof Error ? errMsg : errMsg.parserError);
+        });
+        pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
+          if (settled) return;
+          settled = true;
+          resolve(pdfData);
+        });
+        const buffer = Buffer.from(uint8.buffer, uint8.byteOffset, uint8.byteLength);
+        pdfParser.parseBuffer(buffer);
       });
 
-      const pages = (pdfData.Pages ?? []) as Record<string, unknown>[];
+      const pages = pdfData.Pages as
+        | { Texts?: { R?: { T?: string }[] }[] }[]
+        | undefined;
       const textParts: string[] = [];
-      for (const page of pages) {
-        const texts = (page.Texts ?? []) as Record<string, unknown>[];
-        for (const textItem of texts) {
-          const runs = (textItem.R ?? []) as Record<string, unknown>[];
-          for (const run of runs) {
-            const encoded = (run.T ?? "") as string;
-            textParts.push(decodeURIComponent(encoded));
+      if (pages) {
+        for (const page of pages) {
+          const texts = page.Texts;
+          if (!texts) continue;
+          for (const textItem of texts) {
+            const runs = textItem.R;
+            if (!runs) continue;
+            for (const run of runs) {
+              if (run.T) {
+                try {
+                  textParts.push(decodeURIComponent(run.T));
+                } catch {
+                  textParts.push(run.T);
+                }
+              }
+            }
           }
         }
       }
       resumeText = textParts.join(" ");
 
-      console.log(`[PDF] Extracted ${resumeText.length} characters from ${pages.length} page(s)`);
+      console.log(`[PDF] Extracted ${resumeText.length} characters from ${pages?.length ?? 0} page(s)`);
     } catch (pdfErr: unknown) {
       const msg = pdfErr instanceof Error ? pdfErr.message : String(pdfErr);
       console.error("[PDF] Extraction failed:", msg);
