@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PDFParse } from "pdf-parse";
+import PDFParser from "pdf2json";
 import type { AnalysisResult } from "@/types/analysis";
 import { mockAnalysisResult } from "@/lib/mock-data";
 
@@ -152,12 +152,34 @@ export async function POST(request: Request) {
       const uint8 = new Uint8Array(arrayBuffer);
       console.log(`[PDF] Parsing resume (${resume.name}, ${uint8.length} bytes)`);
 
-      const parser = new PDFParse({ data: uint8 });
-      const result = await parser.getText();
-      resumeText = result.text;
-      await parser.destroy();
+      const pdfParser = new PDFParser();
+      const pdfData = await new Promise<{
+        Pages: { Texts: { R: { T: string }[] }[] }[];
+      }>((resolve, reject) => {
+        pdfParser.on("pdfParser_dataError", (errMsg: { parserError: Error } | Error) =>
+          reject(errMsg instanceof Error ? errMsg : errMsg.parserError)
+        );
+        pdfParser.on("pdfParser_dataReady", (data) =>
+          resolve(data as unknown as { Pages: { Texts: { R: { T: string }[] }[] }[] })
+        );
+        pdfParser.parseBuffer(Buffer.from(uint8));
+      });
 
-      console.log(`[PDF] Extracted ${resumeText.length} characters from ${result.pages.length} page(s)`);
+      const pages = (pdfData.Pages ?? []) as Record<string, unknown>[];
+      const textParts: string[] = [];
+      for (const page of pages) {
+        const texts = (page.Texts ?? []) as Record<string, unknown>[];
+        for (const textItem of texts) {
+          const runs = (textItem.R ?? []) as Record<string, unknown>[];
+          for (const run of runs) {
+            const encoded = (run.T ?? "") as string;
+            textParts.push(decodeURIComponent(encoded));
+          }
+        }
+      }
+      resumeText = textParts.join(" ");
+
+      console.log(`[PDF] Extracted ${resumeText.length} characters from ${pages.length} page(s)`);
     } catch (pdfErr: unknown) {
       const msg = pdfErr instanceof Error ? pdfErr.message : String(pdfErr);
       console.error("[PDF] Extraction failed:", msg);
